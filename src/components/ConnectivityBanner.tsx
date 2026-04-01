@@ -8,9 +8,6 @@ export default function ConnectivityBanner() {
   return (
     <div className="bg-yellow-100 text-yellow-900 border-b border-yellow-300">
       <div className="page-wrapper py-2 flex items-center justify-between">
-        <span className="text-sm">
-          {checked ? "Supabase unreachable — using offline data" : "Checking Supabase connectivity…"}
-        </span>
         <button
           onClick={async () => {
             await retry();
