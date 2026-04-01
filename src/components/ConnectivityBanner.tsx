@@ -6,6 +6,7 @@ export default function ConnectivityBanner() {
   if (!hasEnv) return null;
   if (checked && connected) return null;
   return (
-   
+    <div>
+    </div>
   );
 }
