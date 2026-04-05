@@ -418,10 +418,6 @@ export default function ListingDetailPage() {
               listingId={listing.id}
               showCalendar={false}
             />
-            
-            <div className="hidden lg:block">
-              <AvailabilityCalendar listingId={listing.id} />
-            </div>
 
             <button className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground text-sm font-medium py-2 transition-colors">
               <Flag className="w-4 h-4" /> Report this listing

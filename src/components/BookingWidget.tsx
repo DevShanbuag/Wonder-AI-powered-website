@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { CalendarDays, Users, ArrowRight, ShieldCheck, Info, CreditCard, Star } from "lucide-react";
+import { CalendarDays, Users, ArrowRight, ShieldCheck, Info, CreditCard, Star, ChevronDown, Plus, Minus } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { toast } from "sonner";
 import { createBooking, getListingBookings } from "@/lib/api";
@@ -10,6 +10,9 @@ import { createClient } from "@/utils/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { createRazorpayOrder, openRazorpayCheckout } from "@/lib/razorpay";
 import { DateRange } from "react-day-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format as formatDate } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface BookingWidgetProps {
   pricePerNight: number;
@@ -24,10 +27,12 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
   const { format } = useCurrency();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(1);
   const [isReserving, setIsReserving] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const { data: bookings = [] } = useQuery({
     queryKey: ["listing_bookings", listingId],
@@ -57,8 +62,8 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
     });
   }, [bookings]);
 
-  const effCheckIn = rangeSelected?.from ? rangeSelected.from.toISOString().slice(0, 10) : checkIn;
-  const effCheckOut = rangeSelected?.to ? rangeSelected.to.toISOString().slice(0, 10) : checkOut;
+  const effCheckIn = rangeSelected?.from ? formatDate(rangeSelected.from, "MMM d, yyyy") : "";
+  const effCheckOut = rangeSelected?.to ? formatDate(rangeSelected.to, "MMM d, yyyy") : "";
   
   const nights = useMemo(() => {
     if (!rangeSelected?.from || !rangeSelected?.to) return 0;
@@ -94,8 +99,8 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
       const { data: availability, error: availabilityError } = await supabase
         .rpc('check_resort_availability', {
           resort_id: listingId,
-          checkin_date: effCheckIn,
-          checkout_date: effCheckOut
+          checkin_date: rangeSelected.from.toISOString().slice(0, 10),
+          checkout_date: rangeSelected.to.toISOString().slice(0, 10)
         });
 
       if (availabilityError || !availability) {
@@ -109,8 +114,8 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
         image: "",
         location: "",
         country: "",
-        startDate: effCheckIn,
-        endDate: effCheckOut,
+        startDate: rangeSelected.from.toISOString().slice(0, 10),
+        endDate: rangeSelected.to.toISOString().slice(0, 10),
         guests,
         total: totalPrice,
         status: "pending",
@@ -164,46 +169,58 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
 
       <div className="space-y-4 mb-6">
         <div className="rounded-xl border border-border overflow-hidden">
-          <div className="grid grid-cols-2 border-b border-border">
-            <div className="p-3 border-r border-border">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Check-in</label>
-              <div className="text-sm font-medium">{effCheckIn || "Add date"}</div>
-            </div>
-            <div className="p-3">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Check-out</label>
-              <div className="text-sm font-medium">{effCheckOut || "Add date"}</div>
-            </div>
-          </div>
+          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+            <PopoverTrigger asChild>
+              <div className="grid grid-cols-2 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="p-3 border-r border-border">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Check-in</label>
+                  <div className="text-sm font-medium">{effCheckIn || "Add date"}</div>
+                </div>
+                <div className="p-3">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Check-out</label>
+                  <div className="text-sm font-medium">{effCheckOut || "Add date"}</div>
+                </div>
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={rangeSelected}
+                onSelect={(r: DateRange | undefined) => {
+                  if (r?.from) setCheckIn(r.from.toISOString().slice(0, 10));
+                  else setCheckIn("");
+                  if (r?.to) setCheckOut(r.to.toISOString().slice(0, 10));
+                  else setCheckOut("");
+                }}
+                disabled={isDateDisabled}
+                numberOfMonths={1}
+              />
+            </PopoverContent>
+          </Popover>
+
           <div className="p-3">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Guests</label>
-            <select
-              value={guests}
-              onChange={(e) => setGuests(Number(e.target.value))}
-              className="w-full bg-transparent text-sm font-medium focus:outline-none appearance-none cursor-pointer"
-            >
-              {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>{n} guest{n > 1 ? "s" : ""}</option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-sm font-medium">{guests} guest{guests > 1 ? "s" : ""}</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setGuests(Math.max(1, guests - 1))}
+                  className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-50"
+                  disabled={guests <= 1}
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setGuests(Math.min(maxGuests, guests + 1))}
+                  className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-50"
+                  disabled={guests >= maxGuests}
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
-        {showCalendar && (
-          <div className="p-2 bg-muted/20 rounded-xl border border-border">
-            <Calendar
-              className="w-full"
-              mode="range"
-              selected={rangeSelected}
-              onSelect={(r: DateRange | undefined) => {
-                if (r?.from) setCheckIn(r.from.toISOString().slice(0, 10));
-                else setCheckIn("");
-                if (r?.to) setCheckOut(r.to.toISOString().slice(0, 10));
-                else setCheckOut("");
-              }}
-              disabled={isDateDisabled}
-            />
-          </div>
-        )}
       </div>
 
       <button 
