@@ -135,6 +135,7 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
       
       toast.success("Payment successful! Booking confirmed.");
       queryClient.invalidateQueries({ queryKey: ["listing_bookings", listingId] });
+      queryClient.invalidateQueries({ queryKey: ["userBookings"] });
       navigate("/bookings");
     } catch (err) {
       const error = err as Error;

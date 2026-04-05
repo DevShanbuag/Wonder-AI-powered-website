@@ -62,7 +62,7 @@ export default function ListingDetailPage() {
           
           if (isUuid) {
             try {
-              const { data: resortData, error: resortError } = await supabase
+              const { data: resortData } = await supabase
                 .from("resorts")
                 .select("owner_id")
                 .eq("id", id)

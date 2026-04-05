@@ -56,7 +56,7 @@ export default function Navbar() {
   const isTransparent = location.pathname === "/" && !scrolled;
 
   const userInitial = user?.email?.[0].toUpperCase() || "U";
-  const isOwner = user?.user_metadata?.role === "owner";
+  const isOwner = user?.user_metadata?.role === "owner" || user?.app_metadata?.role === "owner";
 
   const handleSearch = () => {
     const params = new URLSearchParams();
