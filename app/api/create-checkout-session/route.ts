@@ -66,10 +66,10 @@ export async function POST(req: Request) {
       .insert({
         listing_id: listingId,
         user_id: user.id,
-        start_date: checkIn,
-        end_date: checkOut,
+        check_in: checkIn,
+        check_out: checkOut,
         guests: guests,
-        total: totalAmount,
+        total_price: totalAmount,
         status: 'pending'
       })
       .select()

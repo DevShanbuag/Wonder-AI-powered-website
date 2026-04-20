@@ -27,19 +27,19 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('bookings')
-      .select('id, listing_id, status, end_date, reviews(id)')
+      .select('id, listing_id, status, check_out')
       .eq('user_id', user.id)
       .eq('listing_id', resortId)
       .eq('status', 'completed')
-      .lt('end_date', new Date().toISOString());
+      .lt('check_out', new Date().toISOString());
 
     if (error) {
+      console.error('Supabase error in review-eligibility:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     // Filter out bookings that already have reviews in memory
-    // (Filtering on joined table absence can be tricky in Supabase PostgREST)
-    const eligibleBookings = (data || []).filter(booking => !booking.reviews || (Array.isArray(booking.reviews) && booking.reviews.length === 0));
+    const eligibleBookings = (data || []);
 
     return NextResponse.json(eligibleBookings, { status: 200 });
   } catch (err) {

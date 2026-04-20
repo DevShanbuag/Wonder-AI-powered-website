@@ -7,13 +7,13 @@ export function rangesOverlap(startA: string, endA: string, startB: string, endB
   return a1 < b2 && a2 > b1;
 }
 
-export function computeNextAvailable(start: string, end: string, windows: { start_date: string; end_date: string }[]) {
+export function computeNextAvailable(start: string, end: string, windows: { check_in: string; check_out: string }[]) {
   const desiredStart = new Date(start).getTime();
   const desiredEnd = new Date(end).getTime();
   let maxOverlapEnd = desiredStart;
   for (const w of windows) {
-    const s = new Date(w.start_date).getTime();
-    const e = new Date(w.end_date).getTime();
+    const s = new Date(w.check_in).getTime();
+    const e = new Date(w.check_out).getTime();
     const overlaps = desiredStart < e && desiredEnd > s;
     if (overlaps) {
       if (e > maxOverlapEnd) maxOverlapEnd = e;

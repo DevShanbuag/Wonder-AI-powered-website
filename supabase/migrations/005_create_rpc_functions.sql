@@ -16,7 +16,7 @@ DECLARE
   existing_review_id uuid;
 BEGIN
   -- Get booking details and validate ownership
-  SELECT user_id, status, end_date
+  SELECT user_id, status, check_out
   INTO booking_user_id, booking_status, booking_check_out
   FROM public.bookings
   WHERE id = add_review.booking_id;
@@ -82,7 +82,7 @@ BEGIN
     AND status IN ('confirmed', 'completed', 'upcoming', 'ongoing')
     AND (exclude_booking_id IS NULL OR id != exclude_booking_id)
     AND (
-      (checkin_date < end_date) AND (checkout_date > start_date)
+      (checkin_date < check_out) AND (checkout_date > check_in)
     );
   
   -- Return true if available (no conflicts)

@@ -1,10 +1,9 @@
 export interface RazorpayOrderParams {
-  bookingId: string;
   amount: number;
+  metadata?: Record<string, any>;
 }
 
 export interface RazorpayPaymentParams {
-  bookingId: string;
   razorpay_order_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
@@ -51,11 +50,15 @@ interface WindowWithRazorpay extends Window {
 declare const window: WindowWithRazorpay;
 
 export async function createRazorpayOrder(params: RazorpayOrderParams): Promise<{ id: string; currency: string; amount: number }> {
+  const { createClient } = await import('@/utils/supabase/client');
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  
   const response = await fetch('/api/create-razorpay-order', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${await getAuthToken()}`,
+      'Authorization': `Bearer ${session?.access_token || ''}`,
     },
     body: JSON.stringify(params),
   });
@@ -69,10 +72,15 @@ export async function createRazorpayOrder(params: RazorpayOrderParams): Promise<
 }
 
 export async function verifyRazorpayPayment(params: RazorpayPaymentParams): Promise<{ success: boolean; paymentId?: string }> {
+  const { createClient } = await import('@/utils/supabase/client');
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
   const response = await fetch('/api/verify-payment', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token || ''}`,
     },
     body: JSON.stringify(params),
   });
@@ -89,14 +97,7 @@ export async function verifyRazorpayPayment(params: RazorpayPaymentParams): Prom
   };
 }
 
-async function getAuthToken(): Promise<string> {
-  const { supabase } = await import('./supabase');
-  if (!supabase) return '';
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || '';
-}
-
-export function openRazorpayCheckout(orderId: string, amount: number, bookingId: string): Promise<void> {
+export function openRazorpayCheckout(orderId: string, amount: number, onSuccess: (response: RazorpayResponse) => Promise<void>): Promise<void> {
   return new Promise((resolve, reject) => {
     // Load Razorpay script
     const script = document.createElement('script');
@@ -107,20 +108,15 @@ export function openRazorpayCheckout(orderId: string, amount: number, bookingId:
       const Razorpay = window.Razorpay;
       
       const options: RazorpayOptions = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY || 'rzp_test_placeholder',
-        amount: amount * 100, // Convert to paise
+        key: import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.NEXT_PUBLIC_RAZORPAY_KEY || 'rzp_test_placeholder',
+        amount: Math.round(amount * 100), // Convert to paise
         currency: 'INR',
         name: 'WonderStay',
         description: 'Resort Booking Payment',
         order_id: orderId,
         handler: async function (response: RazorpayResponse) {
           try {
-            await verifyRazorpayPayment({
-              bookingId,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
+            await onSuccess(response);
             resolve();
           } catch (error) {
             reject(error);

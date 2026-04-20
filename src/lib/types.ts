@@ -65,13 +65,12 @@ export interface Booking {
   id: string;
   listingId: string;
   userId: string;
-  startDate: string;
-  endDate: string;
+  checkIn: string;
+  checkOut: string;
   guests: number;
-  total: number;
+  totalPrice: number;
   status: BookingStatus;
-  stripePaymentId?: string;
-  paymentAmount?: number;
+  paymentId?: string;
   cancellationReason?: string;
   createdAt: string;
 }

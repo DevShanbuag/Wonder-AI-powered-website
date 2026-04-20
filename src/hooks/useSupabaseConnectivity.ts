@@ -20,7 +20,10 @@ export function useSupabaseConnectivity() {
     check();
   }, [supabase]);
 
-  const hasEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const hasEnv = Boolean(
+    (process.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL) && 
+    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  );
 
   return { connected, checked, hasEnv, retry: check };
 }

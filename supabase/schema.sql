@@ -59,12 +59,12 @@ create table public.bookings (
   id uuid primary key default gen_random_uuid(),
   listing_id uuid not null references public.resorts(id) on delete cascade,
   user_id uuid references auth.users(id) on delete set null,
-  start_date date not null,
-  end_date date not null,
+  check_in date not null,
+  check_out date not null,
   guests integer not null,
-  total integer not null,
-  status public.booking_status_enum not null default 'upcoming',
-  cancellation_reason text,
+  total_price integer not null,
+  payment_id text,
+  status text not null default 'confirmed',
   created_at timestamptz not null default now()
 );
 

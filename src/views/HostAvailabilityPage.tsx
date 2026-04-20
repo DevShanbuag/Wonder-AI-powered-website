@@ -37,10 +37,10 @@ export default function HostAvailabilityPage() {
       },
       body: JSON.stringify({
         listing_id: listingId,
-        start_date: fromISO,
-        end_date: toISO,
+        check_in: fromISO,
+        check_out: toISO,
         guests: 0,
-        total: 0,
+        total_price: 0,
         status: "upcoming",
       }),
     });

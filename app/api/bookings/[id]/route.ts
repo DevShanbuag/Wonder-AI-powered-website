@@ -33,8 +33,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const { data: isAvailable, error: availabilityError } = await serverSupabase
       .rpc('check_resort_availability', {
         resort_id: booking.listing_id,
-        checkin_date: body.start_date,
-        checkout_date: body.end_date,
+        checkin_date: body.check_in,
+        checkout_date: body.check_out,
         exclude_booking_id: params.id
       });
 
@@ -48,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     const { error: updateError } = await serverSupabase
       .from('bookings')
-      .update({ start_date: body.start_date, end_date: body.end_date })
+      .update({ check_in: body.check_in, check_out: body.check_out })
       .eq('id', params.id);
 
     if (updateError) {

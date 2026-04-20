@@ -484,6 +484,28 @@ export const mockListings: Listing[] = [
     avgRating: 4.7, reviewCount: 19,
     owner: { name: "Dorjee Khandu" }, coordinates: [27.58, 91.86],
     transportInfo: { bus: "Tawang Bus Stand (2 km)" }
+  },
+  {
+    id: "10",
+    title: "WonderStay Azure Villa",
+    description: "A premium mock resort added for testing. This villa features stunning ocean views, a private infinity pool, and modern architecture. Perfect for a relaxing getaway.",
+    image: "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=1600&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1600&q=80"
+    ],
+    price: 15000,
+    location: "Goa",
+    country: "India",
+    category: "Beach",
+    season: "All",
+    amenities: ["WiFi", "Pool", "Beach Access", "AC", "Kitchen", "Parking"],
+    capacity: { guests: 4, beds: 2, baths: 2 },
+    avgRating: 5.0,
+    reviewCount: 1,
+    owner: { name: "WonderStay Team" },
+    coordinates: [15.2993, 74.1240],
+    transportInfo: { airport: "Dabolim Airport (25 km)" }
   }
 ];
 

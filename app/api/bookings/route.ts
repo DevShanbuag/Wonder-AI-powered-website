@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { listing_id, start_date, end_date, guests, total } = body;
+    const { listing_id, check_in, check_out, guests, total_price } = body;
 
     if (!serverSupabase) {
       return NextResponse.json({ error: 'Server configuration missing' }, { status: 500 });
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     const { data, error } = await serverSupabase.functions.invoke('create-booking', {
-      body: { listing_id, start_date, end_date, guests, total, user_id: user.id },
+      body: { listing_id, check_in, check_out, guests, total_price, user_id: user.id },
     });
 
     if (error) {

@@ -50,7 +50,7 @@ BEGIN
         FOR i IN 1..4 LOOP
             -- Create a dummy booking for this review since add_review logic requires it
             -- and reviews table has booking_id column
-            INSERT INTO public.bookings (listing_id, user_id, start_date, end_date, guests, total, status)
+            INSERT INTO public.bookings (listing_id, user_id, check_in, check_out, guests, total_price, status)
             VALUES (
                 resort_record.id,
                 user_id_val,

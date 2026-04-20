@@ -20,6 +20,7 @@ import SignupPage from "./views/SignupPage";
 import AboutPage from "./views/AboutPage";
 import BookingsPage from "./views/BookingsPage";
 import ProfilePage from "./views/ProfilePage";
+import BookingSuccessPage from "./views/BookingSuccessPage";
 import ProfileSettingsPage from "./views/ProfileSettingsPage";
 import ViewProfilePage from "./views/ViewProfilePage";
 import LegalPage from "./views/LegalPage";
@@ -66,6 +67,7 @@ const App = () => (
                       <Route path="/signup" element={<SignupPage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/bookings" element={<BookingsPage />} />
+                      <Route path="/booking-success" element={<BookingSuccessPage />} />
                       <Route path="/profile" element={<ProfilePage />} />
                       <Route path="/profile/settings" element={<ProfileSettingsPage />} />
                       <Route path="/profile/view" element={<ViewProfilePage />} />

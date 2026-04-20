@@ -79,8 +79,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       .from('bookings')
       .update({
         status: 'confirmed',
-        stripe_payment_id: session.payment_intent as string,
-        payment_amount: session.amount_total ? session.amount_total / 100 : 0,
+        payment_id: session.payment_intent as string,
       })
       .eq('id', bookingId);
 

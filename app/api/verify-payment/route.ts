@@ -11,38 +11,13 @@ export async function POST(request: NextRequest) {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      bookingId,
     } = await request.json();
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !bookingId) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json(
         { error: 'Missing required payment details' },
         { status: 400 }
       );
-    }
-
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .select('status, razorpay_order_id')
-      .eq('id', bookingId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (bookingError || !booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
-    }
-
-    if (booking.status === 'confirmed') {
-      return NextResponse.json({ error: 'Booking already confirmed' }, { status: 409 });
     }
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
@@ -53,32 +28,16 @@ export async function POST(request: NextRequest) {
 
     if (expectedSignature !== razorpay_signature) {
       return NextResponse.json(
-        { error: 'Invalid payment signature' },
+        { error: 'Invalid payment signature', success: false },
         { status: 400 }
       );
     }
 
-    const { error: updateError } = await supabase
-      .from('bookings')
-      .update({
-        status: 'confirmed',
-        razorpay_payment_id: razorpay_payment_id,
-      })
-      .eq('id', bookingId);
-
-    if (updateError) {
-      console.error('Error updating booking:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update booking' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, paymentId: razorpay_payment_id });
   } catch (error) {
     console.error('Payment verification error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', success: false },
       { status: 500 }
     );
   }

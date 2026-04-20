@@ -1,4 +1,4 @@
-export type BookingStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
+export type BookingStatus = "pending" | "confirmed" | "upcoming" | "ongoing" | "completed" | "cancelled";
 
 export interface Booking {
   id: string;
@@ -7,11 +7,12 @@ export interface Booking {
   image: string;
   location: string;
   country: string;
-  startDate: string;
-  endDate: string;
+  checkIn: string;
+  checkOut: string;
   guests: number;
-  total: number;
+  totalPrice: number;
   status: BookingStatus;
+  paymentId?: string;
   cancellationReason?: string;
 }
 
@@ -22,6 +23,11 @@ const l2 = mockListings[1];
 const l3 = mockListings[2];
 const l4 = mockListings[3];
 
+import { addDays, subDays, format } from "date-fns";
+
+const today = new Date();
+const formatDateStr = (date: Date) => format(date, "yyyy-MM-dd");
+
 export const mockBookings: Booking[] = [
   {
     id: "b1",
@@ -30,10 +36,10 @@ export const mockBookings: Booking[] = [
     image: l2.image,
     location: l2.location,
     country: l2.country,
-    startDate: "2026-03-15",
-    endDate: "2026-03-19",
+    checkIn: formatDateStr(addDays(today, 5)),
+    checkOut: formatDateStr(addDays(today, 9)),
     guests: 2,
-    total: 60000,
+    totalPrice: 60000,
     status: "upcoming",
   },
   {
@@ -43,10 +49,10 @@ export const mockBookings: Booking[] = [
     image: l1.image,
     location: l1.location,
     country: l1.country,
-    startDate: "2026-02-20",
-    endDate: "2026-02-25",
+    checkIn: formatDateStr(subDays(today, 2)),
+    checkOut: formatDateStr(addDays(today, 3)),
     guests: 4,
-    total: 42000,
+    totalPrice: 42000,
     status: "ongoing",
   },
   {
@@ -56,10 +62,10 @@ export const mockBookings: Booking[] = [
     image: l3.image,
     location: l3.location,
     country: l3.country,
-    startDate: "2025-12-10",
-    endDate: "2025-12-12",
+    checkIn: formatDateStr(subDays(today, 15)),
+    checkOut: formatDateStr(subDays(today, 12)),
     guests: 2,
-    total: 15000,
+    totalPrice: 15000,
     status: "completed",
   },
   {
@@ -69,10 +75,10 @@ export const mockBookings: Booking[] = [
     image: l4.image,
     location: l4.location,
     country: l4.country,
-    startDate: "2026-01-10",
-    endDate: "2026-01-15",
+    checkIn: formatDateStr(addDays(today, 10)),
+    checkOut: formatDateStr(addDays(today, 15)),
     guests: 2,
-    total: 90000,
+    totalPrice: 90000,
     status: "cancelled",
     cancellationReason: "Change of plans",
   },

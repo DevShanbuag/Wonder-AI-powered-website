@@ -183,30 +183,36 @@ export async function getReviews(listingId: string): Promise<Review[]> {
 }
 
 export async function getBookings(): Promise<Booking[]> {
-  if (!hasSupabaseEnv || !supabase) return [];
-  const ok = await ensureSupabaseConnectivity();
-  if (!ok) return [];
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return [];
-  const { data, error } = await supabase
-    .from("bookings")
-    .select("*, listing:resorts(*)")
-    .eq("user_id", session.user.id)
-    .order("created_at", { ascending: false });
-  if (error || !data) return [];
-  return data.map(d => ({
-    id: d.id,
-    listingId: d.listing_id,
-    title: d.listing.title,
-    image: d.listing.image,
-    location: d.listing.location,
-    country: d.listing.country,
-    startDate: d.start_date,
-    endDate: d.end_date,
-    guests: d.guests,
-    total: d.total,
-    status: d.status
-  }));
+  try {
+    if (!hasSupabaseEnv || !supabase) return mockBookings;
+    const ok = await ensureSupabaseConnectivity();
+    if (!ok) return mockBookings;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return mockBookings;
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*, listing:resorts(*)")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false });
+    if (error || !data) return mockBookings;
+    return data.map(d => ({
+      id: d.id,
+      listingId: d.listing_id,
+      title: d.listing.title,
+      image: d.listing.image,
+      location: d.listing.location,
+      country: d.listing.country,
+      checkIn: d.check_in,
+      checkOut: d.check_out,
+      guests: d.guests,
+      totalPrice: d.total_price,
+      status: d.status,
+      paymentId: d.payment_id
+    }));
+  } catch (err) {
+    console.error("Error fetching bookings:", err);
+    return mockBookings;
+  }
 }
 
 export async function getListingBookings(listingId: string): Promise<Booking[]> {
@@ -228,11 +234,12 @@ export async function getListingBookings(listingId: string): Promise<Booking[]> 
     image: "",
     location: "",
     country: "",
-    startDate: d.start_date,
-    endDate: d.end_date,
+    checkIn: d.check_in,
+    checkOut: d.check_out,
     guests: d.guests,
-    total: d.total,
-    status: d.status
+    totalPrice: d.total_price,
+    status: d.status,
+    paymentId: d.payment_id
   }));
 }
 
@@ -253,16 +260,20 @@ export async function createReview(input: { listing_id: string; booking_id: stri
 
 export async function createBooking(payload: Omit<Booking, "id" | "status" | "createdAt" | "userId"> & { status?: BookingStatus }): Promise<{ ok: boolean; id?: string; error?: string }> {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch("/api/bookings", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token || ''}`
+      },
       body: JSON.stringify({
         listing_id: payload.listingId,
-        start_date: payload.startDate,
-        end_date: payload.endDate,
+        check_in: payload.checkIn,
+        check_out: payload.checkOut,
         guests: payload.guests,
-        total: payload.total,
-        status: payload.status ?? "upcoming",
+        total_price: payload.totalPrice,
+        status: payload.status ?? "confirmed",
       }),
     });
     const j = await res.json().catch(() => ({}));

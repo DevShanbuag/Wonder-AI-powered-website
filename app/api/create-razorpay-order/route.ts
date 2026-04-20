@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import { serverSupabase } from '@/lib/supabase-server';
+import { createClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,23 +13,19 @@ export async function POST(req: Request) {
     });
 
     const body = await req.json();
-    const { bookingId, amount } = body;
+    const { amount, metadata } = body;
 
-    if (!bookingId || !amount) {
+    if (!amount) {
       return NextResponse.json(
-        { error: 'Missing bookingId or amount' },
+        { error: 'Missing amount' },
         { status: 400 }
       );
     }
 
-    if (!serverSupabase) {
-      return NextResponse.json(
-        { error: 'Server configuration missing' },
-        { status: 500 }
-      );
-    }
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
 
-    const { data: { user } } = await serverSupabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json(
@@ -37,48 +34,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: booking, error: bookingError } = await serverSupabase
-      .from('bookings')
-      .select('*, razorpay_order_id')
-      .eq('id', bookingId)
-      .eq('user_id', user.id)
-      .eq('status', 'pending')
-      .single();
-
-    if (bookingError || !booking) {
-      return NextResponse.json(
-        { error: 'Booking not found or not in pending status' },
-        { status: 404 }
-      );
-    }
-
-    if (booking.razorpay_order_id) {
-      const order = await razorpay.orders.fetch(booking.razorpay_order_id);
-      return NextResponse.json({
-        id: order.id,
-        currency: order.currency,
-        amount: order.amount,
-      });
-    }
-
     const options = {
-      amount: amount * 100,
+      amount: Math.round(amount * 100),
       currency: 'INR',
-      receipt: bookingId,
+      receipt: `receipt_${Date.now()}`,
       notes: {
-        bookingId: bookingId,
         userId: user.id,
+        ...metadata
       },
     };
 
     const order = await razorpay.orders.create(options);
-
-    if (serverSupabase) {
-      await serverSupabase
-        .from('bookings')
-        .update({ razorpay_order_id: order.id })
-        .eq('id', bookingId);
-    }
 
     return NextResponse.json({
       id: order.id,

@@ -10,16 +10,16 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     }
     const { data, error } = await serverSupabase
       .from('bookings')
-      .select('start_date,end_date,status')
+      .select('check_in, check_out, status')
       .eq('listing_id', params.id)
       .in('status', ['confirmed', 'upcoming', 'ongoing'])
-      .order('start_date', { ascending: true });
+      .order('check_in', { ascending: true });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    const windows = (data ?? []).map((b: { start_date: string; end_date: string }) => ({
-      start_date: b.start_date,
-      end_date: b.end_date,
+    const windows = (data ?? []).map((b: { check_in: string; check_out: string }) => ({
+      check_in: b.check_in,
+      check_out: b.check_out,
     }));
     return NextResponse.json({ windows }, { status: 200 });
   } catch (e) {
