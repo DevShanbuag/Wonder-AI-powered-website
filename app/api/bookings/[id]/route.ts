@@ -1,21 +1,21 @@
 import { NextResponse } from 'next/server';
-import { serverSupabase } from '@/lib/supabase-server';
+import { createClient } from '@/src/utils/supabase/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
     const body = await req.json();
-    if (!serverSupabase) {
-      return NextResponse.json({ error: 'Server configuration missing' }, { status: 500 });
-    }
-    const { data: { user } } = await serverSupabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: booking, error: bookingError } = await serverSupabase
+    const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select('listing_id, user_id')
       .eq('id', params.id)
@@ -30,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     // Check for overlapping bookings
-    const { data: isAvailable, error: availabilityError } = await serverSupabase
+    const { data: isAvailable, error: availabilityError } = await supabase
       .rpc('check_resort_availability', {
         resort_id: booking.listing_id,
         checkin_date: body.check_in,
@@ -46,7 +46,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: 'Dates overlap with an existing booking' }, { status: 409 });
     }
 
-    const { error: updateError } = await serverSupabase
+    const { error: updateError } = await supabase
       .from('bookings')
       .update({ check_in: body.check_in, check_out: body.check_out })
       .eq('id', params.id);
@@ -63,18 +63,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
     const body = await req.json().catch(() => ({}));
     const reason = body?.reason || 'Cancelled';
-    if (!serverSupabase) {
-      return NextResponse.json({ error: 'Server configuration missing' }, { status: 500 });
-    }
-    const { data: { user } } = await serverSupabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: booking, error: bookingError } = await serverSupabase
+    const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select('user_id')
       .eq('id', params.id)
@@ -88,7 +87,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { error: updateError } = await serverSupabase
+    const { error: updateError } = await supabase
       .from('bookings')
       .update({ status: 'cancelled', cancellation_reason: reason })
       .eq('id', params.id);

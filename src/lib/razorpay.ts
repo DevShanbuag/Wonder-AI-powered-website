@@ -49,7 +49,7 @@ interface WindowWithRazorpay extends Window {
 
 declare const window: WindowWithRazorpay;
 
-export async function createRazorpayOrder(params: RazorpayOrderParams): Promise<{ id: string; currency: string; amount: number }> {
+export async function createRazorpayOrder(params: RazorpayOrderParams): Promise<{ order_id: string; currency: string; amount: number }> {
   const { createClient } = await import('@/utils/supabase/client');
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -97,7 +97,12 @@ export async function verifyRazorpayPayment(params: RazorpayPaymentParams): Prom
   };
 }
 
-export function openRazorpayCheckout(orderId: string, amount: number, onSuccess: (response: RazorpayResponse) => Promise<void>): Promise<void> {
+export function openRazorpayCheckout(
+  orderId: string, 
+  amount: number, 
+  onSuccess: (response: RazorpayResponse) => Promise<void>,
+  prefill?: { name?: string; email?: string }
+): Promise<void> {
   return new Promise((resolve, reject) => {
     // Load Razorpay script
     const script = document.createElement('script');
@@ -108,8 +113,8 @@ export function openRazorpayCheckout(orderId: string, amount: number, onSuccess:
       const Razorpay = window.Razorpay;
       
       const options: RazorpayOptions = {
-        key: import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.NEXT_PUBLIC_RAZORPAY_KEY || 'rzp_test_placeholder',
-        amount: Math.round(amount * 100), // Convert to paise
+        key: (import.meta as any).env?.NEXT_PUBLIC_RAZORPAY_KEY_ID || (process as any).env?.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        amount: Math.round(amount), // Amount is already in paise from createOrder
         currency: 'INR',
         name: 'WonderStay',
         description: 'Resort Booking Payment',
@@ -128,8 +133,8 @@ export function openRazorpayCheckout(orderId: string, amount: number, onSuccess:
           },
         },
         prefill: {
-          name: '', // Will be filled from user profile
-          email: '', // Will be filled from user profile
+          name: prefill?.name || '',
+          email: prefill?.email || '',
         },
         theme: {
           color: '#3399cc',

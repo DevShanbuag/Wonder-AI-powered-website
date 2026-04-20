@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { serverSupabase } from '@/lib/supabase-server';
+import { createAdminClient } from '@/src/utils/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,16 +66,9 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       return;
     }
 
-    if (!serverSupabase) {
-      console.error('Supabase client is not initialized.');
-      return;
-    }
-    if (!serverSupabase) {
-      console.error('Supabase client is not initialized.');
-      return;
-    }
+    const adminSupabase = createAdminClient();
 
-    const { error: updateError } = await serverSupabase
+    const { error: updateError } = await adminSupabase
       .from('bookings')
       .update({
         status: 'confirmed',

@@ -21,7 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuthUser } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/src/utils/supabase/client";
 
 function ProfileHeader() {
   const { user, profile } = useAuthUser();
@@ -43,6 +43,7 @@ function ProfileHeader() {
 }
 
 export default function ProfilePage() {
+  const supabase = createClient();
   const navigate = useNavigate();
   const menuItems = [
     { icon: <Settings className="w-5 h-5" />, label: "Account settings", to: "/profile/settings" },

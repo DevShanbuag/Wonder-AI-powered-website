@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { serverSupabase } from '@/lib/supabase-server';
+import { createClient } from '@/src/utils/supabase/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,16 +10,15 @@ export async function GET(
 ) {
   try {
     const { listingId } = params;
-    if (!serverSupabase) {
-      return NextResponse.json({ canViewContact: false }, { status: 200 });
-    }
-    const { data: { user } } = await serverSupabase.auth.getUser();
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ canViewContact: false }, { status: 200 });
     }
 
-    const { data, error } = await serverSupabase
+    const { data, error } = await supabase
       .from('bookings')
       .select('id')
       .eq('listing_id', listingId)

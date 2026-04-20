@@ -1,7 +1,19 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key];
+  }
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+    // @ts-ignore
+    return import.meta.env[key];
+  }
+  return undefined;
+};
+
+const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL');
+const supabaseAnonKey = getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY');
 
 export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
 
@@ -17,10 +29,8 @@ if (hasSupabaseEnv) {
       },
     });
   } catch (error) {
-    console.error("Failed to initialize Supabase client:", error);
+    // Silenced error
   }
-} else {
-  console.warn("Supabase configuration missing! Please check your .env.local file.");
 }
 
 export const supabase = supabaseInstance;

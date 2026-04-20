@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { CalendarDays, Users, ArrowRight, ShieldCheck, Info, CreditCard, Star, ChevronDown, Plus, Minus } from "lucide-react";
+import { CalendarDays, Users, ArrowRight, ShieldCheck, Info, CreditCard, Star, ChevronDown, Plus, Minus, CheckCircle2 } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { toast } from "sonner";
 import { createBooking, getListingBookings } from "@/lib/api";
@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { computeNextAvailable } from "@/lib/date-range";
 import { createClient } from "@/utils/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { createRazorpayOrder, openRazorpayCheckout } from "@/lib/razorpay";
+import { createRazorpayOrder, openRazorpayCheckout, verifyRazorpayPayment } from "@/lib/razorpay";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format as formatDate } from "date-fns";
@@ -83,9 +83,34 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
     setIsReserving(true);
     
     try {
-      // 1. Success Handler (Unified)
-      const handleBookingSuccess = async (paymentId: string) => {
-        try {
+      // 1. Create Order on Backend
+      const { order_id, amount: orderAmount } = await createRazorpayOrder({
+        amount: totalPrice,
+        metadata: {
+          listingId,
+          checkIn: rangeSelected.from!.toISOString(),
+          checkOut: rangeSelected.to!.toISOString(),
+          guests
+        }
+      });
+
+      // 2. Open Razorpay Checkout Modal
+      await openRazorpayCheckout(
+        order_id, 
+        orderAmount, 
+        async (response) => {
+          // 3. Verify Payment on Backend
+          const verification = await verifyRazorpayPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+
+          if (!verification.success) {
+            throw new Error("Payment verification failed");
+          }
+
+          // 4. Create Booking in Supabase
           const { error: insertError } = await supabase
             .from("bookings")
             .insert([{
@@ -95,75 +120,32 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
               check_out: rangeSelected.to!.toISOString().slice(0, 10),
               guests: guests,
               total_price: totalPrice,
-              payment_id: paymentId,
+              payment_id: response.razorpay_payment_id,
               status: "confirmed"
             }]);
 
-          if (insertError) console.error("Database save failed:", insertError);
-        } catch (e) {
-          console.error("Database failed, continuing with redirection:", e);
-        }
-
-        toast.success("Booking Confirmed!");
-        queryClient.invalidateQueries({ queryKey: ["listing_bookings", listingId] });
-        queryClient.invalidateQueries({ queryKey: ["userBookings"] });
-        
-        navigate("/booking-success", { 
-          state: { 
-            checkIn: rangeSelected.from!.toISOString(),
-            checkOut: rangeSelected.to!.toISOString(),
-            guests,
-            totalPrice,
-            listingId
-          } 
-        });
-      };
-
-      // 2. Try Real Razorpay
-      try {
-        const order = await createRazorpayOrder({
-          amount: totalPrice,
-          metadata: {
-            listing_id: listingId,
-            check_in: rangeSelected.from!.toISOString().slice(0, 10),
-            check_out: rangeSelected.to!.toISOString().slice(0, 10),
-            guests: guests,
+          if (insertError) {
+            console.error("Database save failed:", insertError);
+            throw new Error(insertError.message);
           }
-        });
 
-        await openRazorpayCheckout(order.id, totalPrice, async (response) => {
-          // Verify payment on backend
-          const verification = await verifyRazorpayPayment({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          });
-
-          if (verification.success) {
-            await handleBookingSuccess(response.razorpay_payment_id);
-          } else {
-            throw new Error("Payment verification failed");
-          }
-        });
-      } catch (payError: any) {
-        console.warn("Razorpay flow failed:", payError);
-        
-        if (payError.message?.includes("cancelled")) {
-          toast.error("Payment was cancelled");
-          setIsReserving(false);
-          return;
+          toast.success("Booking Confirmed!");
+          
+          // Invalidate queries to reflect in real-time
+          await queryClient.invalidateQueries({ queryKey: ["listing_bookings", listingId] });
+          await queryClient.invalidateQueries({ queryKey: ["userBookings"] });
+          
+          // Wait a bit to show the "Confirmed" state before redirecting
+          setTimeout(() => {
+            navigate("/bookings");
+          }, 1500);
+        },
+        {
+          name: session.user.user_metadata?.full_name || "",
+          email: session.user.email || ""
         }
+      );
 
-        // Fallback for testing/production if keys are not set but user wants a "working" flow
-        if (process.env.NODE_ENV === 'development' || !import.meta.env.VITE_RAZORPAY_KEY) {
-          console.info("Using mock fallback for demonstration...");
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          await handleBookingSuccess(`mock_pay_${Date.now()}`);
-        } else {
-          toast.error(payError.message || "Payment failed");
-          setIsReserving(false);
-        }
-      }
     } catch (err: any) {
       console.error("Booking error:", err);
       toast.error(err.message || "Failed to process booking");
@@ -240,12 +222,15 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
       <button 
         onClick={handleReserve} 
         disabled={isReserving}
-        className="btn-primary w-full py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 hover:translate-y-[-2px] transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+        className={cn(
+          "w-full py-3.5 rounded-xl font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2",
+          isReserving ? "bg-green-500 text-white" : "btn-primary shadow-primary/20 hover:translate-y-[-2px]"
+        )}
       >
         {isReserving ? (
           <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            Processing...
+            <CheckCircle2 className="h-5 w-5 animate-bounce" />
+            Booking Confirmed!
           </>
         ) : (
           <>
@@ -255,7 +240,13 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
         )}
       </button>
 
-      <p className="text-center text-sm text-muted-foreground mt-4">You won't be charged yet</p>
+      <div className="flex items-center justify-center gap-1.5 mt-4 text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
+        <span>Powered by</span>
+        <span className="font-bold text-primary">Razorpay</span>
+      </div>
+
+      <p className="text-center text-xs text-muted-foreground mt-2">You won't be charged yet</p>
+
 
       {nights > 0 && (
         <div className="mt-6 space-y-3">

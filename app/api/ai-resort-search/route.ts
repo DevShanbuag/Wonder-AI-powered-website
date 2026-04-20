@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { serverSupabase } from '@/lib/supabase-server';
+import { createClient } from '@/src/utils/supabase/server';
+import { cookies } from 'next/headers';
 import { mockListings } from '@/lib/mock-data';
 
 export const dynamic = 'force-dynamic';
@@ -101,15 +102,11 @@ function extractFiltersManually(message: string) {
 
 export async function POST(req: Request) {
   try {
+    const cookieStore = await cookies();
+    const serverSupabase = createClient(cookieStore);
+    
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    if (!serverSupabase) {
-      return NextResponse.json({ 
-        message: "I apologize, but my resort collection is currently offline. Please check back later.", 
-        resorts: [] 
-      });
-    }
     const body = await req.json();
     const { message, filters: directFilters } = body;
 

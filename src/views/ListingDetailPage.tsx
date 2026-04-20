@@ -78,7 +78,7 @@ export default function ListingDetailPage() {
                 };
               }
             } catch (e) {
-              console.warn("Could not fetch owner_id from Supabase, using mock owner", e);
+              // Ignore fetch error for owner_id
             }
           }
         }

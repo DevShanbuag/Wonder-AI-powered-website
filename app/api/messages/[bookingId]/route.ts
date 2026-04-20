@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { serverSupabase } from '@/lib/supabase-server';
+import { createClient } from '@/src/utils/supabase/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,16 +10,15 @@ export async function GET(
 ) {
   try {
     const { bookingId } = params;
-    if (!serverSupabase) {
-      return NextResponse.json({ error: 'Server configuration missing' }, { status: 500 });
-    }
-    const { data: { user } } = await serverSupabase.auth.getUser();
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data, error } = await serverSupabase
+    const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('booking_id', bookingId)
@@ -44,16 +44,15 @@ export async function POST(
   try {
     const { bookingId } = params;
     const { message, receiverId } = await req.json();
-    if (!serverSupabase) {
-      return NextResponse.json({ error: 'Server configuration missing' }, { status: 500 });
-    }
-    const { data: { user } } = await serverSupabase.auth.getUser();
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data, error } = await serverSupabase
+    const { data, error } = await supabase
       .from('messages')
       .insert([
         {

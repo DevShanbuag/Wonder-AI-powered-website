@@ -1,8 +1,10 @@
-import { supabase, hasSupabaseEnv, ensureSupabaseConnectivity } from "./supabase";
+import { createClient } from "@/utils/supabase/client";
 
 import { mockListings, mockReviews } from "./mock-data";
 import type { Listing, Review, Category, Season, BookingStatus } from "./types";
 import { mockBookings, type Booking } from "./bookings";
+
+const supabase = createClient();
 
 interface TransportInfo {
   railway?: string;
@@ -87,14 +89,9 @@ function mapResortToListing(data: Resort): Listing {
 
 export async function getListings(): Promise<Listing[]> {
   try {
-    if (hasSupabaseEnv && supabase) {
-      const ok = await ensureSupabaseConnectivity();
-      if (ok) {
-        const { data, error } = await supabase.from("resorts").select("*").order("created_at", { ascending: false });
-        if (!error && data && data.length > 0) {
-          return data.map(mapResortToListing);
-        }
-      }
+    const { data, error } = await supabase.from("resorts").select("*").order("created_at", { ascending: false });
+    if (!error && data && data.length > 0) {
+      return data.map(mapResortToListing);
     }
   } catch (err) {
     console.error("Error fetching listings from Supabase:", err);
@@ -112,22 +109,17 @@ export async function getListings(): Promise<Listing[]> {
 
 export async function getListingById(id: string): Promise<Listing | null> {
   try {
-    if (hasSupabaseEnv && supabase) {
-      const ok = await ensureSupabaseConnectivity();
-      if (ok) {
-        // Try to fetch from the view first (includes contact info logic)
-        const { data, error } = await supabase.from("resorts_with_contact").select("*").eq("id", id).maybeSingle();
-        
-        if (!error && data) {
-          return mapResortToListing(data);
-        }
+    // Try to fetch from the view first (includes contact info logic)
+    const { data, error } = await supabase.from("resorts_with_contact").select("*").eq("id", id).maybeSingle();
+    
+    if (!error && data) {
+      return mapResortToListing(data);
+    }
 
-        // If view fails or is missing, try fetching from the main resorts table
-        const { data: resortData, error: resortError } = await supabase.from("resorts").select("*").eq("id", id).maybeSingle();
-        if (!resortError && resortData) {
-          return mapResortToListing(resortData);
-        }
-      }
+    // If view fails or is missing, try fetching from the main resorts table
+    const { data: resortData, error: resortError } = await supabase.from("resorts").select("*").eq("id", id).maybeSingle();
+    if (!resortError && resortData) {
+      return mapResortToListing(resortData);
     }
   } catch (err) {
     console.error("Error fetching listing from Supabase:", err);
@@ -148,60 +140,82 @@ export async function getListingById(id: string): Promise<Listing | null> {
 
 export async function getReviews(listingId: string): Promise<Review[]> {
   try {
-    if (hasSupabaseEnv && supabase) {
-      const ok = await ensureSupabaseConnectivity();
-      if (ok) {
-        const { data, error } = await supabase.from("reviews").select("*").eq("listing_id", listingId).order("created_at", { ascending: false });
-        if (!error && data && data.length > 0) {
-          return data.map((r) => ({
-            id: r.id,
-            comment: r.comment,
-            rating: r.rating,
-            author: { name: r.author_name },
-            createdAt: r.created_at,
-          } as Review));
-        }
-      }
+    const { data, error } = await supabase.from("reviews_with_profiles").select("*").eq("resort_id", listingId).order("created_at", { ascending: false });
+    if (!error && data && data.length > 0) {
+      return data.map((r: any) => ({
+        id: r.id,
+        user: {
+          name: r.full_name || "Guest",
+          avatarUrl: r.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.user_id}`
+        },
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.created_at
+      }));
     }
   } catch (err) {
     console.error("Error fetching reviews from Supabase:", err);
   }
-
-  // Fallback to mock reviews if Supabase is empty or failed
-  // For simplicity, we return some reviews if the listing exists in mock data
-  const listing = mockListings.find(l => l.id === listingId);
-  if (listing) {
-    // Return a few reviews based on the listing's ID to keep it consistent
-    return mockReviews.map((rev, idx) => ({
-      ...rev,
-      id: `${listingId}-rev-${idx}`,
-      resortId: listingId
-    }));
-  }
-
-  return [];
+  return mockReviews;
 }
 
 export async function getBookings(): Promise<Booking[]> {
   try {
-    if (!hasSupabaseEnv || !supabase) return mockBookings;
-    const ok = await ensureSupabaseConnectivity();
-    if (!ok) return mockBookings;
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return mockBookings;
+    if (!session) return [];
+
     const { data, error } = await supabase
       .from("bookings")
-      .select("*, listing:resorts(*)")
+      .select(`
+        *,
+        resorts (
+          title,
+          location,
+          image
+        )
+      `)
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false });
-    if (error || !data) return mockBookings;
+
+    if (!error && data) {
+      return data.map((b: any) => ({
+        id: b.id,
+        listingId: b.listing_id,
+        title: b.resorts?.title || "Resort",
+        location: b.resorts?.location || "India",
+        image: b.resorts?.image || "",
+        country: "India",
+        checkIn: b.check_in,
+        checkOut: b.check_out,
+        guests: b.guests,
+        totalPrice: b.total_price,
+        status: b.status as any,
+        paymentId: b.payment_id,
+        cancellationReason: b.cancellation_reason
+      }));
+    }
+  } catch (err) {
+    console.error("Error fetching bookings from Supabase:", err);
+  }
+  return [];
+}
+
+export async function getListingBookings(listingId: string): Promise<Booking[]> {
+  try {
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("listing_id", listingId)
+      .neq("status", "cancelled");
+      
+    if (error || !data) return [];
     return data.map(d => ({
       id: d.id,
       listingId: d.listing_id,
-      title: d.listing.title,
-      image: d.listing.image,
-      location: d.listing.location,
-      country: d.listing.country,
+      title: "", // Not needed for availability check
+      image: "",
+      location: "",
+      country: "",
       checkIn: d.check_in,
       checkOut: d.check_out,
       guests: d.guests,
@@ -210,52 +224,24 @@ export async function getBookings(): Promise<Booking[]> {
       paymentId: d.payment_id
     }));
   } catch (err) {
-    console.error("Error fetching bookings:", err);
-    return mockBookings;
+    console.error("Error fetching listing bookings:", err);
+    return [];
   }
 }
 
-export async function getListingBookings(listingId: string): Promise<Booking[]> {
-  if (!hasSupabaseEnv || !supabase) return [];
-  const ok = await ensureSupabaseConnectivity();
-  if (!ok) return [];
-  
-  const { data, error } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("listing_id", listingId)
-    .neq("status", "cancelled");
-    
-  if (error || !data) return [];
-  return data.map(d => ({
-    id: d.id,
-    listingId: d.listing_id,
-    title: "", // Not needed for availability check
-    image: "",
-    location: "",
-    country: "",
-    checkIn: d.check_in,
-    checkOut: d.check_out,
-    guests: d.guests,
-    totalPrice: d.total_price,
-    status: d.status,
-    paymentId: d.payment_id
-  }));
-}
-
 export async function createReview(input: { listing_id: string; booking_id: string; comment: string; rating: number }): Promise<{ ok: boolean; error?: string }> {
-  if (!hasSupabaseEnv || !supabase) return { ok: false, error: "supabase_not_configured" };
-  const ok = await ensureSupabaseConnectivity();
-  if (!ok) return { ok: false, error: "supabase_unreachable" };
-  
-  const { error } = await supabase.rpc('add_review', {
-    booking_id: input.booking_id,
-    rating: input.rating,
-    comment: input.comment
-  });
-  
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  try {
+    const { error } = await supabase.rpc('add_review', {
+      booking_id: input.booking_id,
+      rating: input.rating,
+      comment: input.comment
+    });
+    
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: "failed_to_create_review" };
+  }
 }
 
 export async function createBooking(payload: Omit<Booking, "id" | "status" | "createdAt" | "userId"> & { status?: BookingStatus }): Promise<{ ok: boolean; id?: string; error?: string }> {
@@ -291,10 +277,11 @@ export async function createBooking(payload: Omit<Booking, "id" | "status" | "cr
 }
 
 export async function sendBookingRequest(input: { listing_id: string; check_in: string; check_out: string; guests: number }): Promise<{ ok: boolean; error?: string }> {
-  if (!hasSupabaseEnv || !supabase) return { ok: false, error: "supabase_not_configured" };
-  const ok = await ensureSupabaseConnectivity();
-  if (!ok) return { ok: false, error: "supabase_unreachable" };
-  const { error } = await supabase.from("booking_requests").insert([input]);
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  try {
+    const { error } = await supabase.from("booking_requests").insert([input]);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: "failed_to_send_request" };
+  }
 }

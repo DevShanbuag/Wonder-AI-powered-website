@@ -10,6 +10,7 @@ if (import.meta.env.DEV) {
     const suppress = [
       "net::ERR_ABORTED",
       "net::ERR_INTERNET_DISCONNECTED",
+      "net::ERR_BLOCKED_BY_ORB",
       "AuthRetryableFetchError",
       "Failed to fetch",
     ].some((p) => text.includes(p));

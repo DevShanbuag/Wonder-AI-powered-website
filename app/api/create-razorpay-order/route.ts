@@ -22,7 +22,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const cookieStore = cookies();
+    const amountInPaise = Math.round(amount * 100);
+    if (amountInPaise < 100) {
+      return NextResponse.json(
+        { error: 'Amount must be at least 100 paise (₹1)' },
+        { status: 400 }
+      );
+    }
+
+    const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -35,7 +43,7 @@ export async function POST(req: Request) {
     }
 
     const options = {
-      amount: Math.round(amount * 100),
+      amount: amountInPaise,
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
       notes: {
@@ -47,7 +55,7 @@ export async function POST(req: Request) {
     const order = await razorpay.orders.create(options);
 
     return NextResponse.json({
-      id: order.id,
+      order_id: order.id,
       currency: order.currency,
       amount: order.amount,
     });

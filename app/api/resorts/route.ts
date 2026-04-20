@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { serverSupabase } from '@/lib/supabase-server';
+import { createClient } from '@/src/utils/supabase/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +10,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
-    if (!serverSupabase) {
-      return NextResponse.json({ error: 'Server configuration missing' }, { status: 500 });
-    }
-    const { data, error } = await serverSupabase
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    
+    const { data, error } = await supabase
       .from('resorts')
       .select('*')
       .order('created_at', { ascending: false });
