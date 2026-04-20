@@ -135,10 +135,18 @@ export default function BookingWidget({ pricePerNight, maxGuests, listingId, ext
           await queryClient.invalidateQueries({ queryKey: ["listing_bookings", listingId] });
           await queryClient.invalidateQueries({ queryKey: ["userBookings"] });
           
-          // Wait a bit to show the "Confirmed" state before redirecting
+          // Redirect to success page with booking details
           setTimeout(() => {
-            navigate("/bookings");
-          }, 1500);
+            navigate("/booking-success", { 
+              state: {
+                checkIn: rangeSelected.from!.toISOString(),
+                checkOut: rangeSelected.to!.toISOString(),
+                guests: guests,
+                totalPrice: totalPrice,
+                listingId: listingId
+              }
+            });
+          }, 1000);
         },
         {
           name: session.user.user_metadata?.full_name || "",

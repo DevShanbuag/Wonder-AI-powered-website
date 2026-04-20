@@ -113,7 +113,7 @@ export function openRazorpayCheckout(
       const Razorpay = window.Razorpay;
       
       const options: RazorpayOptions = {
-        key: (import.meta as any).env?.NEXT_PUBLIC_RAZORPAY_KEY_ID || (process as any).env?.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        key: (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_RAZORPAY_KEY_ID) || (import.meta as any).env?.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Sfdl45Q3Um5chO',
         amount: Math.round(amount), // Amount is already in paise from createOrder
         currency: 'INR',
         name: 'WonderStay',

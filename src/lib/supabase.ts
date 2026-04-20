@@ -13,7 +13,7 @@ const getEnv = (key: string): string | undefined => {
 };
 
 const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL');
-const supabaseAnonKey = getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY');
+const supabaseAnonKey = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
 export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
 

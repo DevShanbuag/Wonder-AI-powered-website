@@ -14,6 +14,7 @@ import { DateRange } from "react-day-picker";
 
 const tabs: { key: BookingStatus | "all"; label: string; icon: JSX.Element }[] = [
   { key: "ongoing", label: "Ongoing", icon: <Clock className="w-4 h-4" /> },
+  { key: "confirmed", label: "Confirmed", icon: <CheckCircle2 className="w-4 h-4" /> },
   { key: "upcoming", label: "Upcoming", icon: <CalendarIcon className="w-4 h-4" /> },
   { key: "completed", label: "Completed", icon: <CheckCircle2 className="w-4 h-4" /> },
   { key: "cancelled", label: "Cancelled", icon: <XCircle className="w-4 h-4" /> },
@@ -49,7 +50,7 @@ export default function BookingsPage() {
     if (tab === "all") return bookings;
     
     return bookings.filter((b: Booking) => {
-      // Group 'confirmed' and 'upcoming' together for the 'upcoming' tab
+      // Group 'confirmed' and 'upcoming' together for the 'upcoming' tab if user chooses
       if (tab === "upcoming") {
         return b.status === "upcoming" || b.status === "confirmed";
       }
@@ -203,7 +204,7 @@ export default function BookingsPage() {
                   <div className="mt-3 flex items-center justify-between">
                     <p className="font-semibold">{format(b.totalPrice)}</p>
                     <div className="flex gap-2">
-                      {b.status === "upcoming" && (
+                      {(b.status === "upcoming" || b.status === "confirmed") && (
                         <>
                           <button onClick={() => onCancel(b.id)} className="btn-outline px-4 py-2">Cancel</button>
                           <Dialog>
